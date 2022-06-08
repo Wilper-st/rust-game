@@ -5,6 +5,8 @@ extern crate piston;
 
 use std::f32::consts::PI;
 
+use rand::Rng;
+
 use glam::{DVec2, Vec2};
 use glutin_window::GlutinWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -26,41 +28,6 @@ pub struct Defender {
 }
 
 impl Defender {
-
-    // The method returns an array of ids that correspond to the colliding sides of the Defender. 
-    // [left, top, right, bottom]
-    fn defenders_collision(&mut self, defs: Vec<Defender>) -> Vec<u8> {
-        let mut sides: Vec<u8> = vec![0, 0, 0, 0];
-
-        for def in defs{
-
-            let mut x = def.position.x;
-            let mut y = def.position.y;
-
-            if   (x += def.size/2.0) >= (self.position.x -= self.size/2.0)
-            && (((y += def.size/2.0) >= (self.position.y -= self.size/2.0))
-            ||  ((y -= def.size/2.0) <= (self.position.y += self.size/2.0))) {
-                sides[0] = 1;
-            }
-            if   (x -= def.size/2.0) >= (self.position.x += self.size/2.0)
-            && (((y += def.size/2.0) >= (self.position.y -= self.size/2.0))
-            ||  ((y -= def.size/2.0) <= (self.position.y += self.size/2.0))) {
-                sides[2] = 1;
-            }
-            if   (y += def.size/2.0) >= (self.position.y -= self.size/2.0)
-            && (((x += def.size/2.0) >= (self.position.x -= self.size/2.0))
-            ||  ((x -= def.size/2.0) <= (self.position.x += self.size/2.0))) {
-                sides[3] = 1;
-            }
-            if   (y -= def.size/2.0) >= (self.position.y += self.size/2.0)
-            && (((x += def.size/2.0) >= (self.position.x -= self.size/2.0))
-            ||  ((x -= def.size/2.0) <= (self.position.x += self.size/2.0))) {
-                sides[1] = 1;
-            }
-        }
-        sides
-    }
-
     pub fn move_to_player(&mut self, player_x: f64, player_y: f64, args: &UpdateArgs){
 
         let p_pos = DVec2::new(player_x, player_y);
@@ -76,22 +43,27 @@ impl Defender {
 }
 
 fn create_defenders(count: u32) -> Vec<Defender> {
+
+    let mut rng = rand::thread_rng();
+
     (0..count).map( |x| Defender {
         id: x,
-        position: DVec2::new(10.0 + f64::from(x * 40), 200.0),
+        position: DVec2::new(rng.gen_range(0..800) as f64, rng.gen_range(0..600) as f64),
         size: 15.0,
         rotation: 0.0,
-        speed: 25.0,
+        speed: 80.0,
         vec_speed: DVec2::new(0.0, 0.0)
     }).collect()
 }
 
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
+    is_over: bool,
     x: f64, y: f64,
     size: f64,
     rotation: f64,  // Rotation for the player.
     speed: f64,
+    rotation_speed: f64,
     m_right: bool,
     m_left: bool,
     m_up: bool,
@@ -165,7 +137,7 @@ impl Game {
 
     fn update(&mut self, args: &UpdateArgs) {
         // Rotate 5 radians per second.
-        self.rotation += 320.0 * args.dt;
+        self.rotation += self.rotation_speed * args.dt;
 
         if self.m_left == true {
             self.x -= self.speed * args.dt;
@@ -203,11 +175,13 @@ fn main() {
     // Create a new game and run it.
     let mut game = Game {
         gl: GlGraphics::new(opengl),
+        is_over: false,
         x:window.size().width/2.0,
         y:window.size().height/2.0,
         size:40.0,
         rotation: 0.0,
         speed: 300.0,
+        rotation_speed: 2.0,
         m_right: false,
         m_left: false,
         m_up: false,
@@ -226,11 +200,19 @@ fn main() {
         }
 
         if let Some(args) = e.update_args() {
-            game.update(&args);// rotate player and change position
+            // rotate player and change position
+            if !game.is_over{
+                game.update(&args);
+            }
 
             for i in &mut defenders {
-                //i.move_to_player(i.defenders_collision(defenders),  game.x, game.y, &args);
-                i.move_to_player(game.x, game.y, &args);
+
+                let pdistance = i.position - DVec2::new(game.x, game.y);
+                if pdistance.length() < (game.size/2.0 + i.size/2.0) {
+                   game.is_over = true;
+                }
+
+                i.move_to_player( game.x, game.y, &args);
             }
         }
     }
