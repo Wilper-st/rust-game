@@ -5,6 +5,11 @@ extern crate piston;
 
 use std::f32::consts::PI;
 
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc
+};
+
 use rand::Rng;
 
 use glam::{DVec2, Vec2};
@@ -36,7 +41,7 @@ impl Defender {
         let direction = p_pos - pos;
         let angle = f64::atan2(direction.y, direction.x) * 180.0/f64::from(PI);
         self.rotation = angle;
-        self.vec_speed = (direction.normalize() * self.speed * args.dt);
+        self.vec_speed = direction.normalize() * self.speed * args.dt;
         let res_pos = pos + self.vec_speed;
         self.position = res_pos;
     }
@@ -59,7 +64,8 @@ fn create_defenders(count: u32) -> Vec<Defender> {
 pub struct Game {
     gl: GlGraphics, // OpenGL drawing backend.
     is_over: bool,
-    x: f64, y: f64,
+    defenders: Vec<Defender>,
+    player_x: f64, player_y: f64,
     size: f64,
     rotation: f64,  // Rotation for the player.
     speed: f64,
@@ -71,7 +77,7 @@ pub struct Game {
 }
 
 impl Game {
-    fn render(&mut self, args: &RenderArgs, defs: &Vec<Defender>) {
+    fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
         let square = rectangle::square(0.0, 0.0, self.size);
@@ -83,11 +89,11 @@ impl Game {
 
             let transform = c
                 .transform
-                .trans(self.x, self.y)
+                .trans(self.player_x, self.player_y)
                 .rot_rad(rotation)
                 .trans(-self.size/2.0, -self.size/2.0);
 
-            for i in defs {
+            for i in &self.defenders {
                 let transform = c
                 .transform
                 .trans(i.position.x, i.position.y)
@@ -137,22 +143,37 @@ impl Game {
 
     fn update(&mut self, args: &UpdateArgs) {
         // Rotate 5 radians per second.
+
         self.rotation += self.rotation_speed * args.dt;
+        if !self.is_over{
+            if self.m_left == true {
+                self.player_x -= self.speed * args.dt;
+            }
 
-        if self.m_left == true {
-            self.x -= self.speed * args.dt;
+            if self.m_up == true {
+               self.player_y -= self.speed * args.dt;
+            }
+
+            if self.m_down == true {
+                self.player_y += self.speed * args.dt;
+            }
+
+            if self.m_right == true {
+                self.player_x += self.speed * args.dt;
+            }
+        }else{
+            self.rotation_speed -= self.rotation_speed/1.1 * args.dt;
+            if self.rotation_speed <= 0.0 { self.rotation_speed = 0.0; }
         }
 
-        if self.m_up == true {
-            self.y -= self.speed * args.dt;
-        }
+        for i in &mut self.defenders {
 
-        if self.m_down == true {
-            self.y += self.speed * args.dt;
-        }
+            let pdistance = i.position - DVec2::new(self.player_x, self.player_y);
+            if pdistance.length() < (self.size/2.0 + i.size/2.0) {
+                self.is_over = true;
+            }
 
-        if self.m_right == true {
-            self.x += self.speed * args.dt;
+            i.move_to_player(self.player_x, self.player_y, &args);
         }
     }
 }
@@ -170,18 +191,21 @@ fn main() {
         .unwrap();
 
     // Fill in defenders list
-    let mut defenders:Vec<Defender> = create_defenders(10); // list of all creatures
+    let defenders:Vec<Defender> = create_defenders(10); // list of all creatures
+
+    //defenders.into_iter().map(|x|, if);
 
     // Create a new game and run it.
     let mut game = Game {
         gl: GlGraphics::new(opengl),
         is_over: false,
-        x:window.size().width/2.0,
-        y:window.size().height/2.0,
+        defenders: defenders,
+        player_x:window.size().width/2.0,// player`s start position
+        player_y:window.size().height/2.0,//
         size:40.0,
         rotation: 0.0,
         speed: 300.0,
-        rotation_speed: 2.0,
+        rotation_speed: 8.0,
         m_right: false,
         m_left: false,
         m_up: false,
@@ -192,7 +216,7 @@ fn main() {
     while let Some(e) = events.next(&mut window) {
 
         if let Some(args) = e.render_args() {
-            game.render(&args, &defenders);
+            game.render(&args);
         }
 
         if let Some(args) = e.button_args() {
@@ -200,20 +224,7 @@ fn main() {
         }
 
         if let Some(args) = e.update_args() {
-            // rotate player and change position
-            if !game.is_over{
-                game.update(&args);
-            }
-
-            for i in &mut defenders {
-
-                let pdistance = i.position - DVec2::new(game.x, game.y);
-                if pdistance.length() < (game.size/2.0 + i.size/2.0) {
-                   game.is_over = true;
-                }
-
-                i.move_to_player( game.x, game.y, &args);
-            }
+            game.update(&args);
         }
     }
 }
