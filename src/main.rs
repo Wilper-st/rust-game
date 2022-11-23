@@ -1,25 +1,30 @@
 mod blade;
 mod defender;
 mod game;
+mod menu;
 
 use crate::blade::Blade;
 use crate::defender::Defender;
 use crate::game::Game;
+use crate::menu::Menu;
 
 use std::f32::consts::PI;
 
+use graphics::CharacterCache;
+use piston_window::{Glyphs, PistonWindow, Transformed};
 use rand::Rng;
 
 use glam::DVec2;
 use glutin_window::GlutinWindow;
-use opengl_graphics::{GlGraphics, OpenGL};
+use opengl_graphics::GlyphCache;
 use piston::event_loop::{EventSettings, Events};
 use piston::input::{Button, RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
-use piston::window::WindowSettings;
 use piston::{
     ButtonArgs, ButtonEvent, ButtonState, EventLoop, Key, MouseButton, MouseCursorEvent, Window,
+    WindowSettings,
 };
 
+use opengl_graphics::{GlGraphics, OpenGL, TextureSettings};
 const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
@@ -49,16 +54,37 @@ fn main() {
         .build()
         .unwrap();
 
-    // Fill in defenders list
-    let defenders: Vec<Defender> = create_defenders(10); // list of all creatures
+    let main_menu: Menu = Menu {
+        bg_fill: [0.0, 0.0, 0.0, 1.0],
+        title: "Monochrom".to_string(),
+        buttons: [
+            "Resume".to_string(),
+            "Options".to_string(),
+            "Exit".to_string(),
+        ],
+        is_resume_b_hover: false,
+        is_options_b_hover: false,
+        is_exit_b_hover: false,
+    };
 
-    //defenders.into_iter().map(|x|, if);
+    let assets = find_folder::Search::ParentsThenKids(3, 3)
+        .for_folder("assets")
+        .unwrap();
+    let ref font = assets.join("Hackbot.otf");
+    let mut glyph_cache = GlyphCache::new(font, (), TextureSettings::new()).unwrap();
+
+    //let mut glyphs = window.load_font(font).unwrap();
+
+    let defenders = create_defenders(10);
 
     let blades: Vec<Blade> = vec![];
 
     // Create a new game and run it.
     let mut game = Game {
         gl: GlGraphics::new(opengl),
+        main_menu: main_menu,
+        window_width: window.size().width,
+        window_height: window.size().height,
         is_over: false,
         restart: false,
         defenders: defenders,
@@ -77,7 +103,9 @@ fn main() {
         m_left: false,
         m_up: false,
         m_down: false,
+        is_menu_open: false,
         defender_create_size: 15.0,
+        do_exit: false,
     };
 
     let mut events = Events::new(EventSettings::new().lazy(false));
@@ -87,7 +115,7 @@ fn main() {
         }
 
         if let Some(args) = e.render_args() {
-            game.render(&args);
+            game.render(&args, &mut glyph_cache);
         }
 
         if let Some(args) = e.button_args() {
@@ -96,6 +124,10 @@ fn main() {
 
         if let Some(args) = e.update_args() {
             game.update(&args);
+        }
+
+        if game.do_exit {
+            return;
         }
     }
 }

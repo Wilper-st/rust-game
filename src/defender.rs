@@ -5,7 +5,7 @@ use piston::UpdateArgs;
 
 use crate::blade::Blade;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Defender {
     pub position: DVec2,
     pub size: f64,
