@@ -2,6 +2,7 @@
 Repo for my test rust game made with piston.
 
 # Controlls
+Q open menu  
 AWSD to move  
 LMB to throw a blade  
 RMB to spawn an enemy  
