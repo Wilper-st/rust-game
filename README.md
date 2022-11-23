@@ -2,8 +2,10 @@
 Repo for my test rust game made with piston.
 
 # Controlls
-AWSD to move
-LMB to throw a blade
+AWSD to move  
+LMB to throw a blade  
+RMB to spawn an enemy  
+UP/DOWN to change size of the enemy
 
 # How to run
 You need to have rust installed on your machine.
