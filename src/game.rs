@@ -312,6 +312,10 @@ impl Game {
                     if self.speed_x < 0.0 {
                         self.speed_x += self.axel * args.dt;
                     }
+
+                    if self.speed_x.abs() < (self.axel * args.dt) {
+                        self.speed_x = 0.0;
+                    }
                 }
 
                 if !self.m_up && !self.m_down {
@@ -320,6 +324,10 @@ impl Game {
                     }
                     if self.speed_y < 0.0 {
                         self.speed_y += self.axel * args.dt;
+                    }
+
+                    if self.speed_y.abs() < (self.axel * args.dt) {
+                        self.speed_y = 0.0;
                     }
                 }
 
