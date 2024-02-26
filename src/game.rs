@@ -245,7 +245,7 @@ impl Game {
                 println!("LBM is pressed!");
 
                 if self.cursor_pos[1] > 250.0 && self.cursor_pos[1] < 300.0 {}
-
+                    self.is_menu_open = false;
                 if self.cursor_pos[1] > 300.0 && self.cursor_pos[1] < 350.0 {
                     self.do_exit = true;
                 }
